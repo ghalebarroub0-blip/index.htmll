@@ -45,12 +45,14 @@ position: relative;
 display:flex;
 justify-content:space-between;
 align-items:center;
+gap: 10px;
 }
 .rank{
 background:rgba(255,255,255,.06);
 padding:8px 14px;
 border-radius:12px;
 font-size:14px;
+white-space: nowrap;
 }
 .wallet-status{
 background:rgba(0,255,200,.08);
@@ -58,6 +60,7 @@ padding:8px 14px;
 border-radius:12px;
 color:#ff4a4a;
 font-size:13px;
+white-space: nowrap;
 }
 .balance{
 display:flex;
@@ -109,6 +112,7 @@ border: 4px solid #08110f;
 width: 100%;
 height: 100%;
 object-fit: cover;
+pointer-events: none;
 }
 .tap{
 position:absolute;
@@ -169,7 +173,7 @@ transition: width 0.1s ease;
 }
 .nav{
 background:#0b1714;
-padding:12px;
+padding:15px;
 border-radius:18px;
 display:flex;
 justify-content:space-around;
@@ -181,19 +185,23 @@ margin-bottom: 5px;
 display:flex;
 flex-direction:column;
 align-items:center;
-font-size:12px;
+font-size:14px;
 color:#587067;
 gap:5px;
 flex: 1;
 text-align: center;
+cursor: pointer;
 }
 .nav-item.active{
 color:#00ffd0;
 }
-#ton-connect-btn button {
+#ton-connect-btn div button {
 background: #00ffd0 !important;
 color: black !important;
 font-weight: bold !important;
+border-radius: 12px !important;
+padding: 10px 14px !important;
+font-size: 13px !important;
 }
 </style>
 </head>
@@ -201,6 +209,7 @@ font-weight: bold !important;
 <div class="app" id="appContainer">
 <div class="topbar">
 <div class="rank">🏆 Bronze</div>
+<div id="ton-connect-btn"></div>
 <div class="wallet-status" id="walletStatus">غير مربوط</div>
 </div>
 
@@ -229,14 +238,11 @@ font-weight: bold !important;
 
 <div class="nav">
   <div class="nav-item active">
-    <i class="fa-solid fa-coins" style="font-size:18px;"></i>
+    <i class="fa-solid fa-coins" style="font-size:20px;"></i>
     <span>Earn</span>
   </div>
   <div class="nav-item">
-    <div id="ton-connect-btn"></div>
-  </div>
-  <div class="nav-item">
-    <i class="fa-solid fa-user" style="font-size:18px;"></i>
+    <i class="fa-solid fa-user" style="font-size:20px;"></i>
     <span>Account</span>
   </div>
 </div>
@@ -244,4 +250,137 @@ font-weight: bold !important;
 
 <script>
 const SUPABASE_URL = "https://kafpeuavozrnfvwgkddn.supabase.co";
-const SUPABASE_ANON_
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthZnBldWF2b3pybmZ2d2drZGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NzQ2MjQsImV4cCI6MjA5NTE1MDYyNH0.7pCEBTFFgSCmRBSqpDggifYSAqJ7IvJBQ9EEzx00B2c";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const TABLE_NAME = "players"; 
+
+const appContainer = document.getElementById("appContainer");
+const coin = document.getElementById("coin");
+const coinsEl = document.getElementById("coins");
+const energyEl = document.getElementById("energy");
+const progressBar = document.getElementById("progressBar");
+
+let coins = 0;
+let energy = 500;
+const maxEnergy = 500;
+let savedWalletAddress = null;
+
+let webUserId = localStorage.getItem("usdtcoins_user_id");
+if (!webUserId) {
+    webUserId = "usr_" + Math.floor(100000 + Math.random() * 900000);
+    localStorage.setItem("usdtcoins_user_id", webUserId);
+}
+
+async function loadData(){
+    try{
+        const {data, error} = await supabaseClient.from(TABLE_NAME).select("*").eq("id", webUserId).single();
+        if(error && error.code === "PGRST116"){
+            await supabaseClient.from(TABLE_NAME).insert([{ id: webUserId, coins: 0, energy: maxEnergy }]);
+        } else if(data){
+            coins = parseInt(data.coins) || 0;
+            energy = parseInt(data.energy) || maxEnergy;
+            if(data.wallet_address){
+                savedWalletAddress = data.wallet_address;
+                document.getElementById("walletStatus").innerText = "مربوط";
+                document.getElementById("walletStatus").style.color = "#00ffd0";
+            }
+        }
+        updateUI();
+    } catch(err) { console.error(err); }
+}
+
+async function saveDataDirectly(currentCoins, currentEnergy, walletAddress = undefined){
+    try{
+        let updateData = { id: webUserId, coins: currentCoins, energy: currentEnergy };
+        if (walletAddress !== undefined) {
+            updateData.wallet_address = walletAddress;
+            savedWalletAddress = walletAddress;
+        } else if (savedWalletAddress) {
+            updateData.wallet_address = savedWalletAddress;
+        }
+        await supabaseClient.from(TABLE_NAME).upsert(updateData);
+    } catch(err){ console.error(err); }
+}
+
+setInterval(() => { saveDataDirectly(coins, energy); }, 4000);
+
+setInterval(() => {
+    if (energy < maxEnergy) {
+        energy++;
+        updateUI();
+    }
+}, 1000);
+
+function updateUI(){
+    coinsEl.innerText = coins.toLocaleString();
+    energyEl.innerText = energy;
+    let percentage = (energy / maxEnergy) * 100;
+    progressBar.style.width = percentage + "%";
+}
+
+function rewardBoost() {
+    coins += 50; 
+    updateUI();
+    saveDataDirectly(coins, energy);
+    alert("مبروك! ربحت 50 عملة إضافية من الـ BOOST 🎉");
+}
+
+function handleTap(clientX, clientY) {
+    if(energy <= 0) return;
+    coins++;
+    energy--;
+    createEffect(clientX, clientY);
+    updateUI();
+    
+    if(coins % 4 === 0) {
+        saveDataDirectly(coins, energy);
+    }
+}
+
+coin.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    for(let i = 0; i < e.changedTouches.length; i++){
+        handleTap(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+    }
+}, {passive: false});
+
+coin.addEventListener("mousedown", (e) => {
+    handleTap(e.clientX, e.clientY);
+});
+
+function createEffect(x, y){
+    const div = document.createElement("div");
+    div.className = "tap";
+    div.innerText = "+1";
+    const rect = appContainer.getBoundingClientRect();
+    div.style.left = (x - rect.left - 15) + "px";
+    div.style.top = (y - rect.top - 20) + "px";
+    appContainer.appendChild(div);
+    setTimeout(() => div.remove(), 500);
+}
+
+// كود ذكي يتعرف تلقائيًا على مسار ورابط الـ GitHub Pages الحالي دون كتابة أي رابط يدوي
+const autoOrigin = window.location.origin + window.location.pathname.replace(/\/$/, "");
+
+const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: autoOrigin + '/tonconnect-manifest.json',
+    buttonRootId: 'ton-connect-btn'
+});
+
+tonConnectUI.onStatusChange(async (wallet) => {
+    const walletStatusEl = document.getElementById("walletStatus");
+    if (wallet) {
+        walletStatusEl.innerText = "مربوط";
+        walletStatusEl.style.color = "#00ffd0";
+        await saveDataDirectly(coins, energy, wallet.account.address);
+    } else {
+        walletStatusEl.innerText = "غير مربوط";
+        walletStatusEl.style.color = "#ff4a4a";
+    }
+});
+
+loadData();
+</script>
+</body>
+</html>
