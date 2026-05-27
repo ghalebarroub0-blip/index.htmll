@@ -221,6 +221,7 @@ font-size: 13px !important;
 <div class="center">
 <div class="coin-container" id="coin">
 <div class="coin-inner">
+<!-- تم تعديل الرابط هنا لتجنب أي تعليق في السكربت -->
 <img src="https://assets.coingecko.com/coins/images/325/large/Tether.png" alt="USDT Coin">
 </div>
 </div>
@@ -360,11 +361,13 @@ function createEffect(x, y){
     setTimeout(() => div.remove(), 500);
 }
 
-// كود ذكي يتعرف تلقائيًا على مسار ورابط الـ GitHub Pages الحالي دون كتابة أي رابط يدوي
-const autoOrigin = window.location.origin + window.location.pathname.replace(/\/$/, "");
+// تعديل صارم ومضمون لقراءة رابط المانيفست داخل غيت هاب بيجز بوجود الشرطة المائلة
+const baseLocation = window.location.origin + window.location.pathname;
+const cleanLocation = baseLocation.endsWith('/') ? baseLocation : baseLocation + '/';
+const manifestPath = cleanLocation + 'tonconnect-manifest.json';
 
 const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-    manifestUrl: autoOrigin + '/tonconnect-manifest.json',
+    manifestUrl: manifestPath,
     buttonRootId: 'ton-connect-btn'
 });
 
