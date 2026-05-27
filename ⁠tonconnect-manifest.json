@@ -1,5 +1,24 @@
-{
-  "url": "https://ghalebarroub0-blip.github.io/usdtcoins",
-  "name": "usdtcoins",
-  "iconUrl": "https://assets.coingecko.com/coins/images/325/large/Tether.png"
-}
+// 1. تحديد مسار ملف المانيفست تلقائياً بناءً على رابط الـ GitHub Pages الحالي
+const baseLocation = window.location.origin + window.location.pathname;
+const cleanLocation = baseLocation.endsWith('/') ? baseLocation : baseLocation + '/';
+const manifestPath = cleanLocation + 'tonconnect-manifest.json';
+
+// 2. تشغيل واجهة المحفظة الرسمية وربطها بالزر
+const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: manifestPath,
+    buttonRootId: 'ton-connect-btn'
+});
+
+// 3. مراقبة حالة المحفظة (إذا ارتبطت، يرسل عنوان المحفظة والبيانات للـ Supabase فوراً)
+tonConnectUI.onStatusChange(async (wallet) => {
+    const walletStatusEl = document.getElementById("walletStatus");
+    if (wallet) {
+        walletStatusEl.innerText = "مربوط";
+        walletStatusEl.style.color = "#00ffd0";
+        // حفظ البيانات وعنوان محفظة اللاعب في جدول players
+        await saveDataDirectly(coins, energy, wallet.account.address);
+    } else {
+        walletStatusEl.innerText = "غير مربوط";
+        walletStatusEl.style.color = "#ff4a4a";
+    }
+});
